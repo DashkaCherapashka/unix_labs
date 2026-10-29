@@ -17,25 +17,29 @@ trap cleanup EXIT HUP INT QUIT PIPE TERM
 
 mkdir -p "$DATA_DIR"
 
+exec 9>"$LOCK_FILE"
+
 while :; do
-    (
-        flock 9 || exit 1
+    target=""
 
-        n=1
-        while :; do
-            name=$(printf "%03d" "$n")
-            target="$DATA_DIR/$name"
-            if ( set -C; : > "$target" ) 2>/dev/null; then
-                seq_num=$((seq_num + 1))
-                printf "%s %d\n" "$CONTAINER_ID" "$seq_num" > "$target"
-                echo "$target" > /tmp/.current_target
-                break
-            fi
-            n=$((n + 1))
-        done
-    ) 9>"$LOCK_FILE"
+    flock 9
 
-    target=$(cat /tmp/.current_target)
+    n=1
+    while :; do
+        name=$(printf "%03d" "$n")
+        candidate="$DATA_DIR/$name"
+        if ( set -C; : > "$candidate" ) 2>/dev/null; then
+            target="$candidate"
+            break
+        fi
+        n=$((n + 1))
+    done
+    
+    seq_num=$((seq_num + 1))
+
+    flock -u 9
+
+    printf "%s %d\n" "$CONTAINER_ID" "$seq_num" > "$target"
 
     sleep 1
     rm -f "$target"
