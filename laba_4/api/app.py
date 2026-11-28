@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 import redis
 import uuid
 import os
+import json
 
 app = Flask(__name__)
 redis_client = redis.Redis(host='redis', port=6379, db=0)
@@ -11,7 +12,7 @@ def create_task():
     data = request.json
     task_id = str(uuid.uuid4())
     task_data = {'id': task_id, 'data': data.get('data', 'default'), 'host': os.uname().nodename}
-    redis_client.lpush('task_queue', str(task_data))
+    redis_client.lpush('task_queue', json.dumps(task_data))   # ← json.dumps, не str()
     return jsonify({'task_id': task_id, 'status': 'queued', 'processed_by': os.uname().nodename}), 201
 
 @app.route('/health', methods=['GET'])
