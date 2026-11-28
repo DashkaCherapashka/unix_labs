@@ -3,8 +3,11 @@ version: '3.8'
 services:
   redis:
     image: redis:alpine
-    ports:
-      - "6379:6379"
+    expose:
+      - "6379"
+    restart: always
+    networks:
+      - app-network
 
   api:
     build: ./api
@@ -13,12 +16,20 @@ services:
     depends_on:
       - redis
     restart: always
+    networks:
+      - app-network
+    deploy:
+      replicas: 3
 
   worker:
     build: ./worker
     depends_on:
       - redis
     restart: always
+    networks:
+      - app-network
+    deploy:
+      replicas: 3
 
   nginx:
     build: ./nginx
@@ -27,3 +38,9 @@ services:
     depends_on:
       - api
     restart: always
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
